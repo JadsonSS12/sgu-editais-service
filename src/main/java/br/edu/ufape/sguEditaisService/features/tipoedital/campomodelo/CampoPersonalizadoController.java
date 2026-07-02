@@ -1,3 +1,4 @@
+package br.edu.ufape.sguEditaisService.features.tipoedital.campomodelo;
 ////package br.edu.ufape.sguEditaisService.comunicacao.controllers;
 ////
 ////import br.edu.ufape.sguEditaisService.comunicacao.dto.campoPersonalizado.CampoPersonalizadoRequest;
