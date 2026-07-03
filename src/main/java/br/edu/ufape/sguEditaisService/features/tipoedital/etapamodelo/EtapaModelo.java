@@ -12,6 +12,7 @@ import br.edu.ufape.sguEditaisService.features.tipoedital.campomodelo.CampoModel
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -57,20 +58,64 @@ public class EtapaModelo {
     private String configuracoes;
 
     // Se pertencer ao Molde (TipoEdital)
-    @ManyToOne
-    @JoinColumn(name = "tipoEditalId")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "tipo_edital_id", nullable = false)
     private TipoEdital tipoEdital;
 
     @OneToMany(mappedBy = "etapaModelo", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<CampoModelo> camposModelo = new ArrayList<>();
+    private final List<CampoModelo> camposModelo = new ArrayList<>();
+
+    public static EtapaModelo criar(
+        String nome,
+        String descricao,
+        Integer ordem,
+        LocalDateTime dataInicio,
+        LocalDateTime dataFim,
+        String configuracoes
+    ) {
+        EtapaModelo etapa = new EtapaModelo();
+        etapa.nome = nome;
+        etapa.descricao = descricao;
+        etapa.ordem = ordem;
+        etapa.dataInicio = dataInicio;
+        etapa.dataFim = dataFim;
+        etapa.configuracoes = configuracoes;
+        return etapa;
+    }
+
+    public void atualizar(
+        String nome,
+        String descricao,
+        Integer ordem,
+        LocalDateTime dataInicio,
+        LocalDateTime dataFim,
+        String configuracoes
+    ) {
+        this.nome = nome;
+        this.descricao = descricao;
+        this.ordem = ordem;
+        this.dataInicio = dataInicio;
+        this.dataFim = dataFim;
+        this.configuracoes = configuracoes;
+    }
 
     public void vincularAoTipo(TipoEdital tipoEdital)
     {
         this.tipoEdital = tipoEdital;
     }
 
-    public void desvincularAoTipo(TipoEdital tipoEdital)
+    public void desvincularAoTipo()
     {
-       
+        this.tipoEdital = null;
+    }
+
+    public void adicionarCampo(CampoModelo campo) {
+        this.camposModelo.add(campo);
+        campo.vincularAEtapa(this);
+    }
+
+    public void removerCampo(CampoModelo campo) {
+        this.camposModelo.remove(campo);
+        campo.desvincularDono();
     }
 }

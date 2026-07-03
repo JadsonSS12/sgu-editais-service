@@ -41,11 +41,11 @@ public class TipoEdital {
 
     // As etapas canônicas que todo edital desse tipo DEVE ter
     @OneToMany(mappedBy = "tipoEdital", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<EtapaModelo> etapasModelo = new ArrayList<>();
+    private final List<EtapaModelo> etapasModelo = new ArrayList<>();
 
     // O formulário padrão para esse tipo de edital
     @OneToMany(mappedBy = "tipoEdital", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<CampoModelo> camposModelo = new ArrayList<>();
+    private final List<CampoModelo> camposModelo = new ArrayList<>();
 
     public static TipoEdital criar(String nome, String descricao, String moduloOrigem)
     {
@@ -70,20 +70,19 @@ public class TipoEdital {
         etapa.vincularAoTipo(this);
     }
 
-    public void removerEtapa(EtapaModelo etapa)
-    {
+    public void removerEtapa(EtapaModelo etapa) {
         etapasModelo.remove(etapa);
-        etapa.desvincularAoTipo(this);
+        etapa.desvincularAoTipo();
     }
 
     public void adicionarCampoGeral(CampoModelo campo) {
         camposModelo.add(campo);
-        campo.vincularTipoEdital(this);
+        campo.vincularAoTipo(this);
     }
 
     public void removerCampoGeral(CampoModelo campo) {
         camposModelo.remove(campo);
-        campo.desvincularTipoEdital();
+        campo.desvincularDono();
     }
 
     public void ativar()
