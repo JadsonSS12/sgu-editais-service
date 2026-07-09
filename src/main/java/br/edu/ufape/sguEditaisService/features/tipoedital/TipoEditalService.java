@@ -1,11 +1,11 @@
 package br.edu.ufape.sguEditaisService.features.tipoedital;
 
-import br.edu.ufape.sguEditaisService.features.tipoedital.dto.AtualizarTipoEditalRequest;
+import br.edu.ufape.sguEditaisService.exceptions.notFound.ResourceNotFoundException;
 import br.edu.ufape.sguEditaisService.features.tipoedital.dto.CriarTipoEditalRequest;
 import br.edu.ufape.sguEditaisService.features.tipoedital.dto.TipoEditalResponse;
-import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -16,16 +16,26 @@ public class TipoEditalService {
     private final TipoEditalRepository tipoEditalRepository;
 
     @Transactional
-    public TipoEditalResponse criar(CriarTipoEditalRequest tipoEditalRequest) {
-        if(tipoEditalRepository.existsByNomeIgnoreCaseAndModuloOrigem(tipoEditalRequest.nome(), tipoEditalRequest.moduloOrigem()))
-        {
-            throw new IllegalArgumentException("Já existe um tipo de edital com esse nome.");
+    public TipoEditalResponse criar(CriarTipoEditalRequest request) {
+        if(tipoEditalRepository.existsByNomeIgnoreCaseAndModuloOrigem(request.nome(), request.moduloOrigem())) {
+            throw new IllegalArgumentException("Já existe um tipo de edital com esse nome neste módulo.");
         }
-                TipoEdital tipo = TipoEdital.criar(
-                tipoEditalRequest.nome(),
-                tipoEditalRequest.descricao(),
-                tipoEditalRequest.moduloOrigem()
+
+        TipoEdital tipo = TipoEdital.criar(
+                request.nome(),
+                request.descricao(),
+                request.moduloOrigem()
         );
+
+        return TipoEditalResponse.from(tipoEditalRepository.save(tipo));
+    }
+
+    @Transactional
+    public TipoEditalResponse finalizarModelo(Long id) {
+        TipoEdital tipo = buscarEntidade(id);
+
+        // A regra de negócio está blindada na entidade!
+        tipo.finalizar();
 
         return TipoEditalResponse.from(tipoEditalRepository.save(tipo));
     }
@@ -44,30 +54,14 @@ public class TipoEditalService {
     }
 
     @Transactional
-    public TipoEditalResponse atualizar(Long id, AtualizarTipoEditalRequest request) {
+    public void deletar(Long id) {
         TipoEdital tipo = buscarEntidade(id);
-
-        tipo.atualizar(
-                request.nome(),
-                request.descricao(),
-                request.moduloOrigem()
-        );
-
-        return TipoEditalResponse.from(tipo);
+        tipoEditalRepository.delete(tipo);
     }
 
-    @Transactional
-    public void ativar(Long id) {
-        buscarEntidade(id).ativar();
-    }
-
-    @Transactional
-    public void desativar(Long id) {
-        buscarEntidade(id).desativar();
-    }
-
-    private TipoEdital buscarEntidade(Long id) {
+    // O pacote restrito (default) permite que os serviços de Etapa/Campo busquem o objeto original
+    public TipoEdital buscarEntidade(Long id) {
         return tipoEditalRepository.findById(id)
-            .orElseThrow(() -> new IllegalArgumentException("Tipo de edital não encontrado."));
+                .orElseThrow(() -> new ResourceNotFoundException("TipoEdital", id));
     }
 }

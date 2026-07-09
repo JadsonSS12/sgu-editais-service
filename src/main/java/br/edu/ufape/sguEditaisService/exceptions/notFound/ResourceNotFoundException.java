@@ -1,6 +1,6 @@
 package br.edu.ufape.sguEditaisService.exceptions.notFound;
 
-public abstract class ResourceNotFoundException extends RuntimeException {
+public class ResourceNotFoundException extends RuntimeException {
     public ResourceNotFoundException(String entityName, Long id) {
         super(String.format("%s com ID %d não foi encontrado(a).", entityName, id));
     }

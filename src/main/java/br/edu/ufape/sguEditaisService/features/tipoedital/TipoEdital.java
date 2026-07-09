@@ -1,25 +1,24 @@
 package br.edu.ufape.sguEditaisService.features.tipoedital;
 
-import java.util.ArrayList;
-import java.util.List;
-
+import br.edu.ufape.sguEditaisService.exceptions.business.RegraNegocioException;
 import br.edu.ufape.sguEditaisService.features.tipoedital.campomodelo.CampoModelo;
 import br.edu.ufape.sguEditaisService.features.tipoedital.etapamodelo.EtapaModelo;
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.OneToMany;
+import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@SQLDelete(sql = "UPDATE tipo_edital SET ativo = false WHERE id = ?")
+@SQLRestriction("ativo = true")
 public class TipoEdital {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -34,64 +33,70 @@ public class TipoEdital {
     @Column(nullable = false)
     private boolean ativo = true;
 
-    // NOVO: Isolamento de domínio. Define qual serviço é "dono" deste template (ex: "sgu-prae-service")
     @NotBlank
     @Column(nullable = false)
     private String moduloOrigem;
 
-    // As etapas canônicas que todo edital desse tipo DEVE ter
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private EstadoModelo estado = EstadoModelo.RASCUNHO;
+
     @OneToMany(mappedBy = "tipoEdital", cascade = CascadeType.ALL, orphanRemoval = true)
     private final List<EtapaModelo> etapasModelo = new ArrayList<>();
 
-    // O formulário padrão para esse tipo de edital
     @OneToMany(mappedBy = "tipoEdital", cascade = CascadeType.ALL, orphanRemoval = true)
     private final List<CampoModelo> camposModelo = new ArrayList<>();
 
-    public static TipoEdital criar(String nome, String descricao, String moduloOrigem)
-    {
+    public static TipoEdital criar(String nome, String descricao, String moduloOrigem) {
         TipoEdital tipo = new TipoEdital();
         tipo.nome = nome;
         tipo.descricao = descricao;
         tipo.moduloOrigem = moduloOrigem;
-
+        tipo.ativo = true;
+        tipo.estado = EstadoModelo.RASCUNHO;
         return tipo;
     }
 
-    public void atualizar(String nome, String descricao, String moduloOrigem)
-    {
-        this.nome = nome;
-        this.descricao = descricao;
-        this.moduloOrigem = moduloOrigem;
+    public void checarPermissaoEdicao() {
+        if (this.estado != EstadoModelo.RASCUNHO) {
+            throw new RegraNegocioException("Modelos finalizados não podem ser alterados.");
+        }
     }
 
-    public void adicionarEtapa(EtapaModelo etapa)
-    {
+    public void finalizar() {
+        if (this.etapasModelo.isEmpty()) {
+            throw new RegraNegocioException("Não é possível finalizar um modelo de edital sem nenhuma etapa.");
+        }
+        this.estado = EstadoModelo.FINALIZADO;
+    }
+
+    // ==========================================
+    // MUTAÇÕES DE ETAPA
+    // ==========================================
+    public void adicionarEtapa(EtapaModelo etapa) {
+        checarPermissaoEdicao();
         etapasModelo.add(etapa);
         etapa.vincularAoTipo(this);
     }
 
     public void removerEtapa(EtapaModelo etapa) {
-        etapasModelo.remove(etapa);
+        checarPermissaoEdicao();
+        this.etapasModelo.remove(etapa);
         etapa.desvincularAoTipo();
     }
 
-    public void adicionarCampoGeral(CampoModelo campo) {
+    // ==========================================
+    // MUTAÇÕES DE CAMPO GERAL (MODELO)
+    // ==========================================
+    public void adicionarCampoModelo(CampoModelo campo) {
+        checarPermissaoEdicao();
         camposModelo.add(campo);
         campo.vincularAoTipo(this);
     }
 
-    public void removerCampoGeral(CampoModelo campo) {
-        camposModelo.remove(campo);
-        campo.desvincularDono();
-    }
-
-    public void ativar()
-    {
-        this.ativo = true;
-    }
-
-    public void desativar()
-    {
-        this.ativo = false;
+    public void removerCampoModelo(CampoModelo campo) {
+        checarPermissaoEdicao();
+        this.camposModelo.remove(campo);
+        campo.desvincular();
     }
 }
